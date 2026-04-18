@@ -333,13 +333,10 @@ def _build_groq_payload(payload: DetectRequest, anomalies: list[AnomalyResult], 
 
 def _build_ai_summary(payload: DetectRequest, anomalies: list[AnomalyResult], summary: str) -> tuple[str, bool]:
     """Create an AI explanation using Groq when available; otherwise return a deterministic fallback."""
+    no_anomaly_phrase = "AI did not detect any anomaly."
     fallback = (
         f"AI review: {summary} "
-        + (
-            "No unusual earnings pattern was detected. "
-            if not anomalies
-            else f"Detected {len(anomalies)} issue(s). "
-        )
+        + (no_anomaly_phrase + " " if not anomalies else f"Detected {len(anomalies)} issue(s). ")
         + f"City: {payload.context.city}. Category: {payload.context.category.replace('_', ' ')}."
     )
 
@@ -347,10 +344,17 @@ def _build_ai_summary(payload: DetectRequest, anomalies: list[AnomalyResult], su
         return fallback, False
 
     prompt = (
-        "You are FairGig's anomaly assistant. Produce a concise but useful verdict for a gig worker. "
-        "If there are no anomalies, say the earnings look healthy and briefly explain why. "
-        "If anomalies exist, summarize the most important ones in plain language, and include practical next steps. "
-        "Do not mention policy or that this is a fallback. Output plain text only.\n\n"
+        "You are FairGig's anomaly assistant. Produce a short, polished verdict for a gig worker. "
+        "Use this exact structure with plain text only:\n"
+        "Verdict: ...\n"
+        "Why: ...\n"
+        "Next steps: ...\n\n"
+        "Rules:\n"
+        "- If there are no anomalies, the Verdict line must start with: AI did not detect any anomaly.\n"
+        "- If anomalies exist, the Verdict line must clearly state that anomalies were detected.\n"
+        "- Keep the tone direct, helpful, and non-technical.\n"
+        "- Mention the city and category when relevant.\n"
+        "- Do not mention policy, prompts, JSON, or fallback behavior.\n\n"
         f"INPUT_JSON:\n{json.dumps(_build_groq_payload(payload, anomalies, summary), ensure_ascii=False)}"
     )
 
