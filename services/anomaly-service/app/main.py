@@ -1,15 +1,19 @@
 import os
+import json
 import statistics
 from datetime import datetime, timezone, date
 from typing import Optional
 import psycopg2
 import psycopg2.extras
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://fairgig:fairgig@localhost:5432/fairgig")
 MIN_HOURLY_RATE = float(os.getenv("MIN_HOURLY_RATE_PKR", "150"))
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant").strip() or "llama-3.1-8b-instant"
 
 app = FastAPI(title="FairGig Anomaly Service", version="1.0.0")
 app.add_middleware(
@@ -317,6 +321,64 @@ def detect_low_hourly_rate(
     return results
 
 
+def _build_groq_payload(payload: DetectRequest, anomalies: list[AnomalyResult], summary: str) -> dict:
+    return {
+        "worker_id": payload.worker_id,
+        "context": payload.context.model_dump(),
+        "earnings": [e.model_dump() for e in payload.earnings],
+        "anomaly_summary": summary,
+        "anomalies": [a.model_dump() for a in anomalies],
+    }
+
+
+def _build_ai_summary(payload: DetectRequest, anomalies: list[AnomalyResult], summary: str) -> tuple[str, bool]:
+    """Create an AI explanation using Groq when available; otherwise return a deterministic fallback."""
+    fallback = (
+        f"AI review: {summary} "
+        + (
+            "No unusual earnings pattern was detected. "
+            if not anomalies
+            else f"Detected {len(anomalies)} issue(s). "
+        )
+        + f"City: {payload.context.city}. Category: {payload.context.category.replace('_', ' ')}."
+    )
+
+    if not GROQ_API_KEY:
+        return fallback, False
+
+    prompt = (
+        "You are FairGig's anomaly assistant. Produce a concise but useful verdict for a gig worker. "
+        "If there are no anomalies, say the earnings look healthy and briefly explain why. "
+        "If anomalies exist, summarize the most important ones in plain language, and include practical next steps. "
+        "Do not mention policy or that this is a fallback. Output plain text only.\n\n"
+        f"INPUT_JSON:\n{json.dumps(_build_groq_payload(payload, anomalies, summary), ensure_ascii=False)}"
+    )
+
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            response = client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {GROQ_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": GROQ_MODEL,
+                    "temperature": 0.2,
+                    "messages": [
+                        {"role": "system", "content": "You write short, direct AI summaries for an earnings protection app."},
+                        {"role": "user", "content": prompt},
+                    ],
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            content = data["choices"][0]["message"]["content"].strip()
+            return content or fallback, True
+    except Exception:
+        return fallback, False
+
+
 @app.get("/api/v1/anomaly/health")
 def health():
     return {"status": "ok", "service": "anomaly-service", "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}
@@ -325,6 +387,7 @@ def health():
 @app.post("/api/v1/anomaly/detect")
 def detect(payload: DetectRequest):
     if not payload.earnings:
+        ai_summary, ai_enabled = _build_ai_summary(payload, [], "No earnings submitted for analysis.")
         return {
             "success": True,
             "worker_id": payload.worker_id,
@@ -332,6 +395,9 @@ def detect(payload: DetectRequest):
             "anomalies_found": 0,
             "anomalies": [],
             "summary": "No earnings submitted for analysis.",
+            "ai_summary": ai_summary,
+            "ai_enabled": ai_enabled,
+            "ai_model": GROQ_MODEL if ai_enabled else None,
             "analyzed_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
 
@@ -367,6 +433,8 @@ def detect(payload: DetectRequest):
         + (", ".join(parts) + "." if parts else "")
     ) if final else "No anomalies detected. Earnings look healthy."
 
+    ai_summary, ai_enabled = _build_ai_summary(payload, final, summary)
+
     return {
         "success": True,
         "worker_id": payload.worker_id,
@@ -374,6 +442,9 @@ def detect(payload: DetectRequest):
         "anomalies_found": len(final),
         "anomalies": [a.model_dump() for a in final],
         "summary": summary,
+        "ai_summary": ai_summary,
+        "ai_enabled": ai_enabled,
+        "ai_model": GROQ_MODEL if ai_enabled else None,
         "analyzed_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     }
 

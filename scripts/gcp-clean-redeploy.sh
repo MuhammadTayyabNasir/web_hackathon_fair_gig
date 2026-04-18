@@ -5,6 +5,8 @@ APP_DIR="${APP_DIR:-$HOME/web_hackathon_fair_gig}"
 DOMAIN="${DOMAIN:-}"
 RESET_DB="${RESET_DB:-0}"
 FIREBASE_API_KEY_INPUT="${VITE_FIREBASE_API_KEY:-}"
+GROQ_API_KEY_INPUT="${GROQ_API_KEY:-}"
+GROQ_MODEL_INPUT="${GROQ_MODEL:-llama-3.1-8b-instant}"
 
 if [ ! -d "$APP_DIR" ]; then
   echo "APP_DIR does not exist: $APP_DIR"
@@ -34,6 +36,9 @@ resolve_firebase_api_key() {
 }
 
 FIREBASE_API_KEY="$(resolve_firebase_api_key)"
+
+export GROQ_API_KEY="$GROQ_API_KEY_INPUT"
+export GROQ_MODEL="$GROQ_MODEL_INPUT"
 
 if [ -z "$FIREBASE_API_KEY" ]; then
   echo "ERROR: Firebase API key is missing."
