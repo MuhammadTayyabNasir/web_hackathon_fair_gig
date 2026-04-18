@@ -28,6 +28,8 @@ Before running deploy, export your Firebase Web API key:
 
 ```bash
 export VITE_FIREBASE_API_KEY='AIza...'
+export GROQ_API_KEY='gsk...'
+export GROQ_MODEL='meta-llama/llama-4-scout-17b-16e-instruct'
 ```
 
 HTTP-only (works immediately with VM IP):
@@ -92,6 +94,18 @@ curl -X POST http://localhost:8001/api/v1/anomaly/detect \
   -H "Content-Type: application/json" \
   -d @payload.json
 ```
+
+## 7.1 Verify Groq directly
+
+On Windows/PowerShell, run:
+
+```powershell
+$env:GROQ_API_KEY='gsk...'
+$env:GROQ_MODEL='meta-llama/llama-4-scout-17b-16e-instruct'
+.\scripts\test-groq-direct.ps1
+```
+
+If this prints `OUTPUT: API hit successful.`, the model and key are working before you test the anomaly service.
 
 ## Notes
 

@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://fairgig:fairgig@localhost:5432/fairgig")
 MIN_HOURLY_RATE = float(os.getenv("MIN_HOURLY_RATE_PKR", "150"))
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant").strip() or "llama-3.1-8b-instant"
+GROQ_MODEL = os.getenv("GROQ_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct").strip() or "meta-llama/llama-4-scout-17b-16e-instruct"
 
 app = FastAPI(title="FairGig Anomaly Service", version="1.0.0")
 app.add_middleware(
