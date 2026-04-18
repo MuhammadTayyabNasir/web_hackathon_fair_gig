@@ -10,6 +10,7 @@ import Layout from '../components/Layout';
 import ImagePreview from '../components/ImagePreview';
 import api from '../api/client';
 import { auth, storage } from '../lib/firebase';
+import { createUniqueId } from '../lib/unique-id';
 import { playSound } from '../lib/sounds';
 
 const schema = z.object({
@@ -185,7 +186,7 @@ export default function AddShiftPage() {
           throw new Error('Please sign in again before uploading a screenshot.');
         }
 
-        const storagePath = `worker-uploads/${firebaseUid}/shifts/${shiftId}/${crypto.randomUUID()}.jpg`;
+        const storagePath = `worker-uploads/${firebaseUid}/shifts/${shiftId}/${createUniqueId('shift')}.jpg`;
         const screenshotRef = ref(storage, storagePath);
         const uploadResult = await uploadBytes(screenshotRef, compressedScreenshot, { contentType: compressedScreenshot.type });
         const downloadUrl = await getDownloadURL(uploadResult.ref);
