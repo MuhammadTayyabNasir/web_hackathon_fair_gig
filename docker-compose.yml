@@ -1,0 +1,111 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: fairgig
+      POSTGRES_PASSWORD: fairgig
+      POSTGRES_DB: fairgig
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fairgig -d fairgig"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api-gateway:
+    build: ./services/api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      CORS_ORIGIN: http://localhost:5173
+      JWT_ACCESS_SECRET: dev-access-secret-change-me
+      AUTH_SERVICE_URL: http://auth-service:3001
+      EARNINGS_SERVICE_URL: http://earnings-service:3002
+      GRIEVANCE_SERVICE_URL: http://grievance-service:3003
+      ANALYTICS_SERVICE_URL: http://analytics-service:3004
+      NOTIFY_SERVICE_URL: http://notification-service:3005
+      ANOMALY_SERVICE_URL: http://anomaly-service:8001
+      CERT_SERVICE_URL: http://certificate-service:8002
+    depends_on:
+      - postgres
+      - redis
+
+  auth-service:
+    build: ./services/auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://fairgig:fairgig@postgres:5432/fairgig
+      JWT_ACCESS_SECRET: dev-access-secret-change-me
+      JWT_REFRESH_SECRET: dev-refresh-secret-change-me
+      CORS_ORIGIN: http://localhost:5173
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  earnings-service:
+    build: ./services/earnings-service
+    ports:
+      - "3002:3002"
+    environment:
+      DATABASE_URL: postgresql://fairgig:fairgig@postgres:5432/fairgig
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  grievance-service:
+    build: ./services/grievance-service
+    ports:
+      - "3003:3003"
+    environment:
+      DATABASE_URL: postgresql://fairgig:fairgig@postgres:5432/fairgig
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  analytics-service:
+    build: ./services/analytics-service
+    ports:
+      - "3004:3004"
+    environment:
+      DATABASE_URL: postgresql://fairgig:fairgig@postgres:5432/fairgig
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+
+  notification-service:
+    build: ./services/notification-service
+    ports:
+      - "3005:3005"
+
+  anomaly-service:
+    build: ./services/anomaly-service
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql://fairgig:fairgig@postgres:5432/fairgig
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  certificate-service:
+    build: ./services/certificate-service
+    ports:
+      - "8002:8002"
+    environment:
+      DATABASE_URL: postgresql://fairgig:fairgig@postgres:5432/fairgig
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

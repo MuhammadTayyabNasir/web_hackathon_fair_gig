@@ -1,0 +1,109 @@
+query ListPlatforms @auth(level: PUBLIC) {
+  platforms(orderBy: [{ name: ASC }], limit: 50) {
+    id
+    name
+    slug
+    country
+    isActive
+  }
+}
+
+query WorkerDashboardSummary($workerId: UUID!)
+  @auth(level: USER) {
+  shifts(
+    where: { worker: { id: { eq: $workerId } } }
+    orderBy: [{ workDate: DESC }]
+    limit: 10
+  ) {
+    id
+    workDate
+    grossEarned
+    platformDeductions
+    netReceived
+    currency
+    platform {
+      name
+      slug
+    }
+  }
+
+  anomalies: anomalyLogs(
+    where: { worker: { id: { eq: $workerId } } }
+    orderBy: [{ detectedAt: DESC }]
+    limit: 10
+  ) {
+    id
+    anomalyType
+    severity
+    plainExplanation
+    detectedAt
+    shift {
+      id
+      workDate
+    }
+  }
+
+  certificates: incomeCertificates(
+    where: { worker: { id: { eq: $workerId } }, isRevoked: { eq: false } }
+    orderBy: [{ generatedAt: DESC }]
+    limit: 5
+  ) {
+    id
+    token
+    fromDate
+    toDate
+    totalVerifiedEarnings
+    avgMonthlyIncome
+    totalVerifiedShifts
+    generatedAt
+  }
+}
+
+query CityMedianCommission($city: String!, $category: WorkerCategory!)
+  @auth(level: USER) {
+  commissionSnapshots(
+    where: {
+      city: { eq: $city }
+      category: { eq: $category }
+      isVerified: { eq: true }
+    }
+    orderBy: [{ snapshotDate: DESC }]
+    limit: 200
+  ) {
+    id
+    reportedRatePct
+    snapshotDate
+    platform {
+      id
+      name
+      slug
+    }
+  }
+}
+
+query ListGrievances($status: GrievanceStatus)
+  @auth(level: USER) {
+  grievances(
+    where: { status: { eq: $status } }
+    orderBy: [{ createdAt: DESC }]
+    limit: 50
+  ) {
+    id
+    category
+    description
+    status
+    city
+    zone
+    upvoteCount
+    isAnonymous
+    worker {
+      id
+      name
+    }
+    platform {
+      name
+      slug
+    }
+    createdAt
+  }
+}

@@ -1,0 +1,140 @@
+enum UserRole {
+  worker
+  verifier
+  advocate
+}
+
+enum WorkerCategory {
+  ride_hailing
+  food_delivery
+  freelance
+  domestic
+}
+
+enum GrievanceStatus {
+  open
+  tagged
+  escalated
+  resolved
+}
+
+enum VerificationStatus {
+  pending
+  verified
+  flagged
+  unverifiable
+}
+
+enum AnomalyType {
+  HIGH_DEDUCTION
+  INCOME_DROP
+  HOURS_MISMATCH
+  SUDDEN_COMMISSION_SPIKE
+  LOW_HOURLY_RATE
+}
+
+enum AnomalySeverity {
+  low
+  medium
+  high
+}
+
+type Platform @table {
+  name: String!
+  slug: String! @col(dataType: "varchar(50)") @unique
+  country: String! @default(expr: "'Pakistan'")
+  isActive: Boolean! @default(expr: "true")
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type User @table {
+  firebaseUid: String @col(dataType: "varchar(128)") @unique
+  name: String! @col(dataType: "varchar(100)")
+  email: String! @col(dataType: "varchar(150)") @unique
+  phone: String @col(dataType: "varchar(20)")
+  role: UserRole!
+  isActive: Boolean! @default(expr: "true")
+  isAnonymous: Boolean! @default(expr: "false")
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type WorkerProfile @table(key: "user") {
+  user: User!
+  city: String @col(dataType: "varchar(100)")
+  zone: String @col(dataType: "varchar(100)")
+  category: WorkerCategory
+  preferredPlatform: Platform
+  cnicLast4: String @col(dataType: "varchar(4)")
+  profileCompletedAt: Timestamp
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type Shift @table {
+  worker: User!
+  platform: Platform!
+  workDate: Date!
+  hoursWorked: Float
+  grossEarned: Float!
+  platformDeductions: Float! @default(expr: "0")
+  netReceived: Float!
+  currency: String! @default(expr: "'PKR'")
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type Verification @table(key: "shift") {
+  shift: Shift!
+  verifier: User
+  status: VerificationStatus!
+  verifierNote: String
+  verifiedAt: Timestamp
+}
+
+type Grievance @table {
+  worker: User!
+  platform: Platform
+  isAnonymous: Boolean! @default(expr: "false")
+  category: String! @col(dataType: "varchar(50)")
+  description: String!
+  status: GrievanceStatus!
+  city: String @col(dataType: "varchar(100)")
+  zone: String @col(dataType: "varchar(100)")
+  upvoteCount: Int! @default(expr: "0")
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type CommissionSnapshot @table {
+  platform: Platform!
+  reportedBy: User!
+  city: String @col(dataType: "varchar(100)")
+  category: WorkerCategory
+  reportedRatePct: Float!
+  snapshotDate: Date!
+  isVerified: Boolean! @default(expr: "false")
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type AnomalyLog @table {
+  worker: User!
+  shift: Shift
+  anomalyType: AnomalyType!
+  severity: AnomalySeverity!
+  zScore: Float
+  expectedValue: Float
+  actualValue: Float
+  plainExplanation: String!
+  detectedAt: Timestamp! @default(expr: "request.time")
+}
+
+type IncomeCertificate @table {
+  worker: User!
+  fromDate: Date!
+  toDate: Date!
+  totalVerifiedEarnings: Float
+  avgMonthlyIncome: Float
+  totalVerifiedShifts: Int
+  token: String! @col(dataType: "varchar(64)") @unique
+  isRevoked: Boolean! @default(expr: "false")
+  generatedAt: Timestamp! @default(expr: "request.time")
+}

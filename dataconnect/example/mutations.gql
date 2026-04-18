@@ -1,0 +1,88 @@
+mutation CreateUserFromFirebase(
+  $firebaseUid: String!
+  $name: String!
+  $email: String!
+  $role: UserRole!
+) @auth(level: USER) {
+  user_insert(
+    data: {
+      firebaseUid: $firebaseUid
+      name: $name
+      email: $email
+      role: $role
+      isActive: true
+      updatedAt_expr: "request.time"
+    }
+  )
+}
+
+mutation CreateShift(
+  $workerId: UUID!
+  $platformId: UUID!
+  $workDate: Date!
+  $hoursWorked: Float
+  $grossEarned: Float!
+  $platformDeductions: Float!
+  $netReceived: Float!
+) @auth(level: USER) {
+  shift_insert(
+    data: {
+      workerId: $workerId
+      platformId: $platformId
+      workDate: $workDate
+      hoursWorked: $hoursWorked
+      grossEarned: $grossEarned
+      platformDeductions: $platformDeductions
+      netReceived: $netReceived
+      currency: "PKR"
+    }
+  )
+}
+
+mutation CreateGrievance(
+  $workerId: UUID!
+  $platformId: UUID
+  $isAnonymous: Boolean!
+  $category: String!
+  $description: String!
+  $city: String
+  $zone: String
+) @auth(level: USER) {
+  grievance_insert(
+    data: {
+      workerId: $workerId
+      platformId: $platformId
+      isAnonymous: $isAnonymous
+      category: $category
+      description: $description
+      city: $city
+      zone: $zone
+      status: open
+      upvoteCount: 0
+      updatedAt_expr: "request.time"
+    }
+  )
+}
+
+mutation CreateIncomeCertificate(
+  $workerId: UUID!
+  $fromDate: Date!
+  $toDate: Date!
+  $totalVerifiedEarnings: Float
+  $avgMonthlyIncome: Float
+  $totalVerifiedShifts: Int
+  $token: String!
+) @auth(level: USER) {
+  incomeCertificate_insert(
+    data: {
+      workerId: $workerId
+      fromDate: $fromDate
+      toDate: $toDate
+      totalVerifiedEarnings: $totalVerifiedEarnings
+      avgMonthlyIncome: $avgMonthlyIncome
+      totalVerifiedShifts: $totalVerifiedShifts
+      token: $token
+      isRevoked: false
+    }
+  )
+}

@@ -1,0 +1,54 @@
+const express = require('express');
+const { body } = require('express-validator');
+const rateLimit = require('express-rate-limit');
+const { asyncHandler } = require('../utils/asyncHandler');
+const { authenticateToken } = require('../middleware/auth.middleware');
+const auth = require('../controllers/auth.controller');
+
+const router = express.Router();
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post(
+  '/register',
+  [
+    body('name').trim().isLength({ min: 2 }).withMessage('Name required'),
+    body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
+    body('password').isLength({ min: 8 }).withMessage('Password min 8 characters'),
+    body('role').isIn(['worker', 'verifier', 'advocate']).withMessage('Role required'),
+  ],
+  asyncHandler(auth.register)
+);
+
+router.post(
+  '/login',
+  loginLimiter,
+  [
+    body('email').isEmail().normalizeEmail(),
+    body('password').notEmpty(),
+  ],
+  asyncHandler(auth.login)
+);
+
+router.post(
+  '/firebase-login',
+  loginLimiter,
+  [
+    body('idToken').isString().isLength({ min: 10 }).withMessage('idToken is required'),
+    body('role').isIn(['worker', 'verifier', 'advocate']).withMessage('Role required'),
+  ],
+  asyncHandler(auth.firebaseLogin)
+);
+
+router.post('/refresh', asyncHandler(auth.refresh));
+router.get('/me', authenticateToken, asyncHandler(auth.me));
+router.post('/logout', asyncHandler(auth.logout));
+router.post('/forgot-password', asyncHandler(auth.forgotPassword));
+router.post('/verify-email', asyncHandler(auth.verifyEmail));
+
+module.exports = { authRouter: router };
