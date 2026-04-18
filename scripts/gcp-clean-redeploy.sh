@@ -4,6 +4,7 @@ set -euo pipefail
 APP_DIR="${APP_DIR:-$HOME/web_hackathon_fair_gig}"
 DOMAIN="${DOMAIN:-}"
 RESET_DB="${RESET_DB:-0}"
+FIREBASE_API_KEY_INPUT="${VITE_FIREBASE_API_KEY:-}"
 
 if [ ! -d "$APP_DIR" ]; then
   echo "APP_DIR does not exist: $APP_DIR"
@@ -12,6 +13,36 @@ if [ ! -d "$APP_DIR" ]; then
 fi
 
 cd "$APP_DIR"
+
+resolve_firebase_api_key() {
+  local key_from_file=""
+  if [ -f "frontend/.env.production" ]; then
+    key_from_file="$(grep -E '^VITE_FIREBASE_API_KEY=' frontend/.env.production | head -1 | cut -d'=' -f2-)"
+  fi
+
+  if [ -n "$FIREBASE_API_KEY_INPUT" ]; then
+    echo "$FIREBASE_API_KEY_INPUT"
+    return
+  fi
+
+  if [ -n "$key_from_file" ]; then
+    echo "$key_from_file"
+    return
+  fi
+
+  echo ""
+}
+
+FIREBASE_API_KEY="$(resolve_firebase_api_key)"
+
+if [ -z "$FIREBASE_API_KEY" ]; then
+  echo "ERROR: Firebase API key is missing."
+  echo "Set it before deploy, for example:"
+  echo "  export VITE_FIREBASE_API_KEY='AIza...'
+  "
+  echo "or add VITE_FIREBASE_API_KEY=... in frontend/.env.production"
+  exit 1
+fi
 
 echo "[1/8] Installing Docker + compose plugin if missing..."
 if ! command -v docker >/dev/null 2>&1; then
@@ -48,7 +79,7 @@ echo "[4/8] Building frontend for same-origin deployment..."
 cat > frontend/.env.production <<EOF
 VITE_API_URL=/
 VITE_CERT_URL=
-VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY:-}
+VITE_FIREBASE_API_KEY=${FIREBASE_API_KEY}
 VITE_FIREBASE_AUTH_DOMAIN=softec-webhackathon.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=softec-webhackathon
 VITE_FIREBASE_STORAGE_BUCKET=softec-webhackathon.firebasestorage.app

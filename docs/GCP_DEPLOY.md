@@ -24,6 +24,12 @@ cd ~/web_hackathon_fair_gig
 
 ## 3. Run one command to clean failed state and redeploy
 
+Before running deploy, export your Firebase Web API key:
+
+```bash
+export VITE_FIREBASE_API_KEY='AIza...'
+```
+
 HTTP-only (works immediately with VM IP):
 
 ```bash
