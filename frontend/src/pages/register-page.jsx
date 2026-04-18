@@ -40,6 +40,7 @@ export default function RegisterPage() {
     const code = err?.code || '';
     const message = err?.message || '';
     if (code === 'auth/invalid-api-key') return 'Firebase API key is invalid. Check VITE_FIREBASE_API_KEY.';
+    if (code === 'auth/unauthorized-domain') return `This domain is not authorized for Google login. Add "${window.location.hostname}" in Firebase Console -> Authentication -> Settings -> Authorized domains.`;
     if (code === 'auth/email-already-in-use') return 'An account already exists with this email.';
     if (code === 'auth/invalid-email') return 'Please enter a valid email address.';
     if (code === 'auth/weak-password') return 'Password is too weak. Use at least 6 characters.';

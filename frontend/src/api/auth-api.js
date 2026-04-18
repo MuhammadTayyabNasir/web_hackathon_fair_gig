@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_AUTH_API_URL || import.meta.env.VITE_API_URL || window.location.origin || 'http://localhost:3001';
 
 /**
  * Exchange Firebase ID token for FairGig JWT/session.

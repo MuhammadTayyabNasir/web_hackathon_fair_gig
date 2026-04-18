@@ -78,6 +78,7 @@ fi
 echo "[4/8] Building frontend for same-origin deployment..."
 cat > frontend/.env.production <<EOF
 VITE_API_URL=/
+VITE_AUTH_API_URL=/
 VITE_CERT_URL=
 VITE_FIREBASE_API_KEY=${FIREBASE_API_KEY}
 VITE_FIREBASE_AUTH_DOMAIN=softec-webhackathon.firebaseapp.com

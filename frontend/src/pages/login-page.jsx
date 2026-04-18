@@ -27,6 +27,7 @@ export default function LoginPage() {
     const code = err?.code || '';
     const message = err?.message || '';
     if (code === 'auth/invalid-api-key') return 'Firebase API key is invalid. Check VITE_FIREBASE_API_KEY.';
+    if (code === 'auth/unauthorized-domain') return `This domain is not authorized for Google login. Add "${window.location.hostname}" in Firebase Console -> Authentication -> Settings -> Authorized domains.`;
     if (code === 'auth/invalid-credential') return 'Invalid email or password.';
     if (code === 'auth/user-disabled') return 'This account has been disabled.';
     if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return 'Google sign-in was cancelled.';

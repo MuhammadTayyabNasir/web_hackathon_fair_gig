@@ -67,6 +67,18 @@ curl -s http://localhost:3000/health
 curl -s http://localhost:8001/api/v1/anomaly/health
 ```
 
+## 6.1 Firebase OAuth Authorized Domains (required for Google popup/redirect)
+
+In Firebase Console:
+
+1. Go to Authentication -> Settings -> Authorized domains
+2. Add your deployed host, for example:
+  - `34.63.123.143`
+  - `your.domain.com` (if using custom domain)
+3. Save and wait 1-2 minutes
+
+If Firebase rejects raw IP domains in your project policy, use a DNS name and add that domain instead.
+
 ## 7. Run anomaly smoke test on VM
 
 ```bash
@@ -84,5 +96,6 @@ curl -X POST http://localhost:8001/api/v1/anomaly/detect \
 ## Notes
 
 - Frontend build gets `VITE_API_URL=/` so API calls are same-origin.
+- Frontend build also gets `VITE_AUTH_API_URL=/` so Firebase token exchange never points to localhost.
 - Certificate links now use `VITE_CERT_URL` or current browser origin (no hardcoded localhost).
 - If frontend is hosted elsewhere (e.g. Firebase HTTPS), backend should also be HTTPS to avoid mixed content.
