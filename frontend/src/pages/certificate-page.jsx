@@ -43,7 +43,8 @@ export default function CertificatePage() {
     }
   }
 
-  const certUrl = generated ? `http://localhost:8002/cert/${generated.token}` : null;
+  const certBase = import.meta.env.VITE_CERT_URL || window.location.origin;
+  const certUrl = generated ? `${certBase}/cert/${generated.token}` : null;
 
   return (
     <Layout>
