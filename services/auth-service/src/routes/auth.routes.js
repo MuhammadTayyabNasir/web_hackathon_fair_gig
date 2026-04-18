@@ -12,7 +12,32 @@ const loginLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'RATE_LIMITED',
+    message: 'Too many login attempts. Please wait a few minutes and try again.',
+    timestamp: new Date().toISOString(),
+  },
 });
+
+const firebaseLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'production' ? 5 : 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Successful exchanges should not consume the limiter budget.
+  skipSuccessfulRequests: true,
+  message: {
+    success: false,
+    error: 'RATE_LIMITED',
+    message: 'Too many Firebase login attempts. Please wait a few minutes and try again.',
+    timestamp: new Date().toISOString(),
+  },
+});
+
+const firebaseLoginRateLimitMiddleware = process.env.NODE_ENV === 'production'
+  ? firebaseLoginLimiter
+  : (_req, _res, next) => next();
 
 router.post(
   '/register',
@@ -37,10 +62,10 @@ router.post(
 
 router.post(
   '/firebase-login',
-  loginLimiter,
+  firebaseLoginRateLimitMiddleware,
   [
     body('idToken').isString().isLength({ min: 10 }).withMessage('idToken is required'),
-    body('role').isIn(['worker', 'verifier', 'advocate']).withMessage('Role required'),
+    body('role').optional().isIn(['worker', 'verifier', 'advocate']).withMessage('Invalid role'),
   ],
   asyncHandler(auth.firebaseLogin)
 );

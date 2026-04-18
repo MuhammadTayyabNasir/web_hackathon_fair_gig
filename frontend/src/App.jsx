@@ -34,6 +34,7 @@ const RegisterPage         = lazy(() => import('./pages/register-page'));
 const WorkerDashboardPage  = lazy(() => import('./pages/worker-dashboard-page'));
 const ShiftsPage           = lazy(() => import('./pages/shifts-page'));
 const AddShiftPage         = lazy(() => import('./pages/add-shift-page'));
+const EditShiftPage        = lazy(() => import('./pages/edit-shift-page'));
 const ImportCsvPage        = lazy(() => import('./pages/import-csv-page'));
 const WorkerAnalyticsPage  = lazy(() => import('./pages/worker-analytics-page'));
 const CertificatePage      = lazy(() => import('./pages/certificate-page'));
@@ -74,6 +75,7 @@ export default function App() {
           <Route path="/worker/dashboard" element={<RequireRole roles={['worker']}><WorkerDashboardPage /></RequireRole>} />
           <Route path="/worker/shifts" element={<RequireRole roles={['worker']}><ShiftsPage /></RequireRole>} />
           <Route path="/worker/shifts/add" element={<RequireRole roles={['worker']}><AddShiftPage /></RequireRole>} />
+          <Route path="/worker/shifts/:id/edit" element={<RequireRole roles={['worker']}><EditShiftPage /></RequireRole>} />
           <Route path="/worker/shifts/import" element={<RequireRole roles={['worker']}><ImportCsvPage /></RequireRole>} />
           <Route path="/worker/analytics" element={<RequireRole roles={['worker']}><WorkerAnalyticsPage /></RequireRole>} />
           <Route path="/worker/certificate" element={<RequireRole roles={['worker']}><CertificatePage /></RequireRole>} />

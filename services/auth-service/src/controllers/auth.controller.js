@@ -198,29 +198,47 @@ async function firebaseLogin(req, res) {
 
   const { idToken, role } = req.body;
   const allowedRoles = ['worker', 'verifier', 'advocate'];
-  if (!allowedRoles.includes(role)) {
+  if (role && !allowedRoles.includes(role)) {
     return res.status(400).json(fail('VALIDATION_ERROR', 'Invalid role'));
   }
 
   try {
     const admin = ensureFirebaseAdmin();
     const decoded = await admin.auth().verifyIdToken(idToken);
-    const email = decoded.email || `${decoded.uid}@firebase.local`;
+    const email = (decoded.email || `${decoded.uid}@firebase.local`).toLowerCase();
     const name = decoded.name || 'FairGig User';
+    const emailVerified = Boolean(decoded.email_verified);
 
-    const userResult = await pool.query(
-      `INSERT INTO users (firebase_uid, name, email, role, email_verified_at)
-       VALUES ($1, $2, $3, $4, CASE WHEN $5 THEN NOW() ELSE NULL END)
-       ON CONFLICT (email)
-       DO UPDATE SET
-         firebase_uid = EXCLUDED.firebase_uid,
-         name = EXCLUDED.name,
-         role = EXCLUDED.role,
-         email_verified_at = CASE WHEN $5 THEN NOW() ELSE users.email_verified_at END,
-         updated_at = NOW()
-       RETURNING id, name, email, role`,
-      [decoded.uid, name, email.toLowerCase(), role, Boolean(decoded.email_verified)]
+    const existingUserResult = await pool.query(
+      `SELECT id, name, email, role
+       FROM users
+       WHERE email = $1 OR firebase_uid = $2
+       LIMIT 1`,
+      [email, decoded.uid]
     );
+
+    let userResult;
+    if (existingUserResult.rowCount > 0) {
+      const existingUser = existingUserResult.rows[0];
+      userResult = await pool.query(
+        `UPDATE users
+         SET
+           firebase_uid = $1,
+           name = CASE WHEN NULLIF($2, '') IS NOT NULL THEN $2 ELSE name END,
+           email_verified_at = CASE WHEN $3 THEN NOW() ELSE email_verified_at END,
+           updated_at = NOW()
+         WHERE id = $4
+         RETURNING id, name, email, role`,
+        [decoded.uid, name.trim(), emailVerified, existingUser.id]
+      );
+    } else {
+      userResult = await pool.query(
+        `INSERT INTO users (firebase_uid, name, email, role, email_verified_at)
+         VALUES ($1, $2, $3, $4, CASE WHEN $5 THEN NOW() ELSE NULL END)
+         RETURNING id, name, email, role`,
+        [decoded.uid, name, email, role || 'worker', emailVerified]
+      );
+    }
 
     const user = userResult.rows[0];
     const tokens = issueTokens(user);

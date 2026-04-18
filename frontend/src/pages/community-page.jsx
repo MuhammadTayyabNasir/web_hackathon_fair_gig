@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import { useAuthStore } from '../store/auth-store';
+import { formatDateTime } from '../lib/date-format';
 
 const schema = z.object({
   category: z.enum(['commission_change', 'deactivation', 'payment_delay', 'unfair_rating', 'account_issue', 'other']),
@@ -67,80 +68,94 @@ export default function CommunityPage() {
   return (
     <Layout>
       <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900">Community Board</h1>
+        <div className="flex items-center justify-between animate-in-up">
+          <div>
+            <h1 className="text-3xl font-bold text-cyan-50">Community Board 💬</h1>
+            <p className="mt-1 text-sm text-cyan-200/70">Share your experiences, support each other</p>
+          </div>
           {user?.role === 'worker' && (
-            <button onClick={() => setShowForm(!showForm)}
-              className="rounded-xl bg-blue-800 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-              {showForm ? 'Cancel' : '+ Post Complaint'}
+            <button onClick={() => setShowForm(!showForm)} title={showForm ? 'Close complaint form' : 'Open complaint form'}
+              className="rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white hover:from-cyan-500 hover:to-blue-500 transition-all duration-200 shadow-[0_8px_20px_rgba(34,211,238,0.3)] animate-in">
+              {showForm ? '✕ Cancel' : '+ Post Complaint'}
             </button>
           )}
         </div>
 
         {/* Post form */}
         {showForm && (
-          <form onSubmit={handleSubmit((d) => postMutation.mutate(d))} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-            <h2 className="font-semibold text-slate-700">Post a Complaint</h2>
+          <form onSubmit={handleSubmit((d) => postMutation.mutate(d))} className="rounded-2xl border border-cyan-300/25 bg-gradient-to-br from-slate-900/60 to-slate-800/40 p-6 shadow-[0_15px_45px_rgba(2,6,23,0.45)] backdrop-blur-lg space-y-4 animated-in">
+            <h2 className="font-semibold text-cyan-100">Post a Complaint</h2>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Category</label>
-              <select {...register('category')} className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:outline-none">
-                {Object.entries(catLabels).map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+              <label className="mb-2 block text-sm font-medium text-cyan-100">Category <span className="text-red-400">*</span></label>
+              <select {...register('category')} className="w-full rounded-lg border border-cyan-300/40 bg-slate-800/70 px-3 py-2.5 text-sm text-cyan-100 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/30" title="Select the complaint category">
+                {Object.entries(catLabels).map(([v,l]) => <option key={v} value={v} className="bg-slate-900 text-cyan-100">{l}</option>)}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Description</label>
-              <textarea {...register('description')} rows={4} className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="Describe your issue in detail..." />
-              {errors.description && <p className="mt-1 text-xs text-red-600">{errors.description.message}</p>}
+              <label className="mb-2 block text-sm font-medium text-cyan-100">Description <span className="text-red-400">*</span></label>
+              <textarea {...register('description')} rows={4} className="w-full rounded-lg border border-cyan-300/40 bg-slate-800/70 px-3 py-2.5 text-sm text-cyan-100 placeholder:text-cyan-300/40 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/30" placeholder="Describe your issue in detail..." title="Provide details about your complaint" />
+              {errors.description && <p className="mt-1 text-xs text-red-400">{errors.description.message}</p>}
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" {...register('is_anonymous')} className="rounded" />
-              <span className="text-sm text-slate-600">Post anonymously (your name/ID will not be shown)</span>
+              <input type="checkbox" {...register('is_anonymous')} className="rounded border-cyan-300/40 bg-slate-800/70 text-cyan-400" />
+              <span className="text-sm text-cyan-200">Post anonymously (your name/ID will not be shown)</span>
             </label>
+            <p className="text-xs text-cyan-200/60">Tagging is handled by advocates and verifiers after review. Only they will see your identity.</p>
             <button type="submit" disabled={postMutation.isPending}
-              className="flex items-center gap-2 rounded-xl bg-blue-800 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+              title="Submit your complaint to the community board"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-lime-600 to-cyan-600 px-6 py-2.5 text-sm font-semibold text-white hover:from-lime-500 hover:to-cyan-500 disabled:opacity-60 transition-all duration-200 shadow-[0_8px_20px_rgba(132,204,22,0.3)]">
               {postMutation.isPending && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
-              Submit Complaint
+              {postMutation.isPending ? 'Posting...' : 'Submit Complaint'}
             </button>
           </form>
         )}
 
         {/* Grievance list */}
         {isLoading && (
-          <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-200" />)}</div>
+          <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-700 shimmer-loading" />)}</div>
         )}
 
         {grievances.length === 0 && !isLoading && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center">
-            <div className="mb-3 text-5xl">💬</div>
-            <h2 className="font-semibold text-slate-700">No complaints yet</h2>
-            <p className="mt-1 text-sm text-slate-500">Be the first to post a complaint</p>
+          <div className="rounded-2xl border border-dashed border-cyan-300/30 bg-cyan-950/20 py-16 text-center animate-in">
+            <div className="mb-3 text-5xl animate-bounce">💬</div>
+            <h2 className="font-semibold text-cyan-100">No complaints yet</h2>
+            <p className="mt-1 text-sm text-cyan-200/60">Be the first to post a complaint and help the community</p>
           </div>
         )}
 
-        <div className="space-y-4">
-          {grievances.map((g) => (
-            <div key={g.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="space-y-3">
+          {grievances.map((g, idx) => (
+            <div key={g.id} className="rounded-2xl border border-cyan-300/25 bg-gradient-to-br from-slate-900/50 to-slate-800/30 p-5 shadow-[0_8px_20px_rgba(34,211,238,0.1)] backdrop-blur-lg transition-all hover:shadow-[0_12px_30px_rgba(34,211,238,0.2)] animate-in" style={{ animationDelay: `${idx * 50}ms` }}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-2">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusColors[g.status] || 'bg-slate-100 text-slate-600'}`}>{g.status}</span>
-                    <span className="text-xs font-medium text-slate-600">{catLabels[g.category] || g.category}</span>
-                    {g.is_anonymous && <span className="text-xs text-slate-400 italic">anonymous</span>}
-                    {g.city && <span className="text-xs text-slate-400">{g.city}{g.zone ? ` · ${g.zone}` : ''}</span>}
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold transition-all ${
+                      g.status === 'resolved' ? 'bg-lime-500/20 text-lime-200' :
+                      g.status === 'escalated' ? 'bg-orange-500/20 text-orange-200' :
+                      g.status === 'tagged' ? 'bg-fuchsia-500/20 text-fuchsia-200' :
+                      'bg-cyan-500/20 text-cyan-200'
+                    }`}>{g.status}</span>
+                    <span className="text-xs font-medium text-cyan-200/80">{catLabels[g.category] || g.category}</span>
+                    {g.is_anonymous && <span className="text-xs text-cyan-200/50 italic">🔒 anonymous</span>}
+                    {g.city && <span className="text-xs text-cyan-200/60">{g.city}{g.zone ? ` · ${g.zone}` : ''}</span>}
                   </div>
-                  <p className="text-sm text-slate-700">{g.description}</p>
+                  <p className="text-sm text-cyan-100">{g.description}</p>
                   {g.tags?.filter(Boolean).length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
-                      {g.tags.filter(Boolean).map(t => <span key={t} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">#{t}</span>)}
+                      {g.tags.filter(Boolean).map(t => <span key={t} className="rounded-full bg-cyan-950/40 border border-cyan-300/20 px-2 py-0.5 text-xs text-cyan-200/70 font-medium">#{t}</span>)}
                     </div>
                   )}
                 </div>
-                <div className="flex flex-col items-center gap-1 shrink-0">
-                  <button onClick={() => upvoteMutation.mutate(g.id)}
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                    ▲ {g.upvote_count}
+                <div className="flex flex-col items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => upvoteMutation.mutate(g.id)}
+                    disabled={Boolean(g.has_upvoted)}
+                    title={g.has_upvoted ? 'You already upvoted this complaint' : 'Support this complaint with your vote'}
+                    className="rounded-lg border border-cyan-300/30 bg-cyan-950/20 px-3 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-950/50 hover:border-cyan-300/60 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
+                  >
+                    👍 {g.upvote_count} {g.has_upvoted ? '✓' : ''}
                   </button>
-                  <span className="text-xs text-slate-400">{new Date(g.created_at).toLocaleDateString()}</span>
+                  <span className="text-xs text-cyan-200/50">{formatDateTime(g.created_at)}</span>
                 </div>
               </div>
             </div>

@@ -1,8 +1,378 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --fg: #f3f7ff;
+  --fg-muted: #b6c9f0;
+  --glass: rgba(8, 16, 38, 0.62);
+  --glass-strong: rgba(6, 12, 29, 0.78);
+  --border: rgba(125, 168, 255, 0.28);
+  --primary: #5b8cff;
+  --accent: #21d4fd;
+  --accent-2: #b721ff;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  color: var(--fg);
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+  background:
+    radial-gradient(1100px 760px at -5% -15%, rgba(91, 140, 255, 0.35), transparent 60%),
+    radial-gradient(950px 620px at 105% -10%, rgba(183, 33, 255, 0.22), transparent 62%),
+    radial-gradient(980px 700px at 58% 118%, rgba(33, 212, 253, 0.18), transparent 62%),
+    linear-gradient(145deg, #050916 0%, #0a1127 45%, #131f46 100%);
+  background-attachment: fixed;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.24;
+  background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.32) 1px, transparent 0);
+  background-size: 28px 28px;
+}
+
+input,
+textarea,
+select {
+  color: #e8f1ff !important;
+  background: rgba(7, 18, 40, 0.85) !important;
+  border-color: rgba(143, 167, 255, 0.5) !important;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #8fa4d3 !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: rgba(91, 140, 255, 0.94) !important;
+  box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.32);
+  background: rgba(8, 22, 48, 0.95) !important;
+  color: #edf3ff !important;
+}
+
+/* Ensure all input types have proper styling */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+input[type="file"] {
+  color: #e2f3ff !important;
+}
+
+/* File input button styling */
+input[type="file"]::file-selector-button {
+  background: rgba(91, 140, 255, 0.22) !important;
+  color: #dce7ff !important;
+  border: 1px solid rgba(91, 140, 255, 0.45) !important;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+input[type="file"]::file-selector-button:hover {
+  background: rgba(91, 140, 255, 0.35) !important;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.page-shell .rounded-2xl.border.bg-white,
+.page-shell .rounded-xl.border.bg-white,
+.page-shell .rounded-2xl.border-dashed,
+.page-shell .rounded-xl.border-dashed,
+.page-shell .overflow-hidden.rounded-2xl.border.bg-white,
+.page-shell .rounded-2xl.bg-white {
+  background: linear-gradient(160deg, rgba(13, 25, 54, 0.74) 0%, rgba(8, 18, 42, 0.62) 100%) !important;
+  border-color: var(--border) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 14px 40px rgba(3, 9, 26, 0.44),
+    0 0 0 1px rgba(148, 180, 255, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.page-shell .bg-slate-50,
+.page-shell .bg-slate-100,
+.page-shell .bg-slate-200,
+.page-shell .bg-slate-900,
+.page-shell .bg-blue-50,
+.page-shell .bg-green-50,
+.page-shell .bg-yellow-50,
+.page-shell .bg-red-50 {
+  background-color: var(--glass) !important;
+}
+
+.page-shell .text-slate-900,
+.page-shell .text-slate-800,
+.page-shell .text-slate-700 {
+  color: #eef4ff !important;
+}
+
+.page-shell .text-slate-600,
+.page-shell .text-slate-500,
+.page-shell .text-slate-400 {
+  color: #b5c9ef !important;
+}
+
+.page-shell .border-slate-200,
+.page-shell .border-slate-300,
+.page-shell .divide-slate-100,
+.page-shell .divide-slate-200 {
+  border-color: rgba(148, 180, 255, 0.22) !important;
+}
+
+.page-shell table thead {
+  background: rgba(7, 16, 39, 0.9) !important;
+}
+
+.page-shell h1,
+.page-shell h2,
+.page-shell h3,
+.page-shell h4,
+.page-shell h5 {
+  font-family: 'Sora', 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.page-shell button,
+.page-shell a[class*='rounded'] {
+  transition: transform 150ms ease, box-shadow 150ms ease, background-color 180ms ease, border-color 180ms ease;
+}
+
+.page-shell button:hover,
+.page-shell a[class*='rounded']:hover {
+  transform: translateY(-1px);
+}
+
+.page-shell .bg-blue-800,
+.page-shell .bg-blue-700 {
+  background: linear-gradient(120deg, rgba(91, 140, 255, 0.9), rgba(33, 212, 253, 0.82)) !important;
+  box-shadow: 0 10px 28px rgba(84, 133, 255, 0.3);
+}
+
+.page-shell .bg-green-600,
+.page-shell .bg-green-700 {
+  background: linear-gradient(120deg, rgba(34, 197, 94, 0.85), rgba(16, 185, 129, 0.8)) !important;
+}
+
+.page-shell .bg-yellow-500,
+.page-shell .bg-orange-500 {
+  background: linear-gradient(120deg, rgba(251, 191, 36, 0.88), rgba(249, 115, 22, 0.84)) !important;
+  color: #1f2937 !important;
+}
+
+.page-shell .bg-red-600 {
+  background: linear-gradient(120deg, rgba(239, 68, 68, 0.88), rgba(190, 24, 93, 0.8)) !important;
+}
+
+.page-shell .bg-white {
+  background-color: var(--glass-strong) !important;
+}
+
+.page-shell .line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+#nprogress .bar {
+  background: linear-gradient(90deg, #5b8cff, #21d4fd, #b721ff) !important;
+  height: 3px !important;
+  box-shadow: 0 0 10px rgba(91, 140, 255, 0.8);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(91, 140, 255, 0.45), inset 0 0 8px rgba(91, 140, 255, 0.16);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(33, 212, 253, 0.65), inset 0 0 12px rgba(33, 212, 253, 0.25);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-in {
+  animation: fadeIn 300ms ease-out;
+}
+
+.animate-in-up {
+  animation: slideInUp 400ms ease-out;
+}
+
+.animate-in-left {
+  animation: slideInLeft 300ms ease-out;
+}
+
+.animate-in-right {
+  animation: slideInRight 300ms ease-out;
+}
+
+.animated-in {
+  animation: slideInUp 300ms ease-out;
+}
+
+.glow-pulse {
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+.shimmer-loading {
+  background: linear-gradient(90deg, rgba(91, 140, 255, 0.12), rgba(183, 33, 255, 0.12), rgba(33, 212, 253, 0.12));
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Hover animations */
+.page-shell .hover\:scale-105:hover {
+  animation: none;
+  transform: scale(1.05);
+  transition: transform 200ms ease;
+}
+
+.page-shell .transition-all {
+  transition: all 200ms ease;
+}
+
+/* Tooltip styling */
+[title] {
+  position: relative;
+}
+
+/* Better focus states */
+.page-shell button:focus-visible,
+.page-shell a:focus-visible,
+.page-shell input:focus-visible,
+.page-shell select:focus-visible,
+.page-shell textarea:focus-visible {
+  outline: 2px solid rgba(91, 140, 255, 0.88);
+  outline-offset: 2px;
+}
+
+/* Prevent white-on-white hover issues */
+.page-shell button:hover,
+.page-shell a:hover {
+  /* Ensure text is always visible */
+  text-shadow: none;
+}
+
+/* Tooltip styling - ensure readability */
+[title] {
+  position: relative;
+}
+
+/* Dark mode tooltip styling */
+@media (prefers-color-scheme: dark) {
+  [title] {
+    --tooltip-bg: rgba(7, 18, 40, 0.95);
+    --tooltip-text: #e2f3ff;
+    --tooltip-border: rgba(34, 211, 238, 0.4);
+  }
+}
+
+/* Ensure all text in interactive elements is readable */
+.page-shell .hover\:bg-white:hover {
+  background-color: var(--glass-strong) !important;
+  color: #dcf8ff !important;
+}
+
+.page-shell .hover\:text-white:hover {
+  color: #dcf8ff !important;
+}
+
+/* Better contrast on all hover states */
+.page-shell a:hover {
+  color: #dce8ff;
+}
+
+.page-shell button:active,
+.page-shell a:active {
+  transform: scale(0.98);
 }

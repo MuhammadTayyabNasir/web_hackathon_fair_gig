@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import Layout from '../components/Layout';
 import api from '../api/client';
+import { formatDateTime } from '../lib/date-format';
 
 const schema = z.object({
   from_date: z.string().min(1, 'From date required'),
@@ -83,7 +84,7 @@ export default function CertificatePage() {
               <span className="font-semibold">Certificate Generated!</span>
             </div>
             <p className="mb-1 text-sm text-slate-600">Token: <code className="rounded bg-white px-1 py-0.5 text-xs">{generated.token}</code></p>
-            <p className="text-sm text-slate-600">Generated: {new Date(generated.generated_at).toLocaleDateString()}</p>
+            <p className="text-sm text-slate-600">Generated: {formatDateTime(generated.generated_at)}</p>
             <div className="mt-4 flex gap-3">
               <a href={certUrl} target="_blank" rel="noreferrer"
                 className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600">

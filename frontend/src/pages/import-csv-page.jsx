@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import Layout from '../components/Layout';
 import api from '../api/client';
@@ -10,7 +10,7 @@ export default function ImportCsvPage() {
   const [result, setResult] = useState(null);
   const [progress, setProgress] = useState('');
   const inputRef = useRef();
-  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   function handleFile(e) {
     const f = e.target.files[0];
@@ -28,6 +28,7 @@ export default function ImportCsvPage() {
     try {
       const res = await api.post('/api/v1/earnings/shifts/csv', form, { headers: { 'Content-Type': 'multipart/form-data' } });
       setResult(res.data.data);
+      await queryClient.invalidateQueries({ queryKey: ['shifts'] });
       toast.success(res.data.message);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Import failed');
@@ -54,7 +55,6 @@ export default function ImportCsvPage() {
       <div className="mx-auto max-w-2xl space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-slate-900">Import Shifts from CSV</h1>
-          <button onClick={() => navigate('/worker/shifts')} className="text-sm text-slate-500 hover:underline">← Back to Shifts</button>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -121,6 +121,7 @@ export default function ImportCsvPage() {
                 </div>
               </div>
             )}
+            <p className="mt-4 text-xs text-slate-500">Shifts list was refreshed automatically after this import.</p>
           </div>
         )}
       </div>

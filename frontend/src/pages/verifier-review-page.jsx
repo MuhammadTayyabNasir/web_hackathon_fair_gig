@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import Layout from '../components/Layout';
 import api from '../api/client';
+import { formatDate } from '../lib/date-format';
 
 export default function VerifierReviewPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
 
   const { data, isLoading, error } = useQuery({
@@ -25,6 +27,7 @@ export default function VerifierReviewPage() {
     setSubmitting(true);
     try {
       await api.put(`/api/v1/earnings/shifts/${id}/verify`, formData);
+      await queryClient.invalidateQueries({ queryKey: ['verifier-queue'] });
       toast.success(`Shift marked as ${formData.status}`);
       navigate('/verifier/queue');
     } catch (err) {
@@ -39,7 +42,6 @@ export default function VerifierReviewPage() {
     <Layout>
       <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
         <p className="text-red-700">Shift not found</p>
-        <button onClick={() => navigate('/verifier/queue')} className="mt-3 text-sm text-blue-700 hover:underline">← Back to queue</button>
       </div>
     </Layout>
   );
@@ -49,14 +51,13 @@ export default function VerifierReviewPage() {
       <div className="mx-auto max-w-2xl space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-slate-900">Review Shift</h1>
-          <button onClick={() => navigate('/verifier/queue')} className="text-sm text-slate-500 hover:underline">← Back to queue</button>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 font-semibold text-slate-700">Shift Details</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {[
-              ['Date', shift.work_date],
+              ['Date', formatDate(shift.work_date)],
               ['Platform', shift.platform_name],
               ['Shift Hours', shift.shift_start && shift.shift_end ? `${shift.shift_start} – ${shift.shift_end}` : `${shift.hours_worked}h declared`],
               ['Gross Earned', `PKR ${Number(shift.gross_earned).toLocaleString()}`],

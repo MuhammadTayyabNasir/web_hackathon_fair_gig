@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import { useAuthStore } from '../store/auth-store';
+import { formatDate, formatDateTime } from '../lib/date-format';
 
 function StatCard({ label, value, color = 'bg-slate-50' }) {
   return (
@@ -100,7 +101,7 @@ export default function WorkerDashboardPage() {
                 <tbody className="divide-y divide-slate-100">
                   {shifts.map(s => (
                     <tr key={s.id}>
-                      <td className="py-2">{s.work_date}</td>
+                      <td className="py-2">{formatDate(s.work_date)}</td>
                       <td className="py-2 text-slate-500">{s.platform_name}</td>
                       <td className="py-2 text-right font-semibold text-green-700">PKR {Number(s.net_received).toLocaleString()}</td>
                       <td className="py-2 text-right">{Number(s.commission_rate_pct).toFixed(1)}%</td>
@@ -138,7 +139,7 @@ export default function WorkerDashboardPage() {
                       <span className="mx-2 text-slate-400">·</span>
                       <span className="text-sm font-medium">{a.anomaly_type?.replace(/_/g, ' ')}</span>
                     </div>
-                    <span className="text-xs text-slate-400">{new Date(a.detected_at).toLocaleDateString()}</span>
+                    <span className="text-xs text-slate-400">{formatDateTime(a.detected_at)}</span>
                   </div>
                   <p className="mt-1 text-sm">{a.plain_explanation}</p>
                 </div>

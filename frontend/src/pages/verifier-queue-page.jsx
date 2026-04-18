@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Layout from '../components/Layout';
 import api from '../api/client';
+import { formatDate } from '../lib/date-format';
 
 export default function VerifierQueuePage() {
   const [page, setPage] = useState(1);
@@ -11,6 +12,7 @@ export default function VerifierQueuePage() {
     queryKey: ['verifier-queue', page],
     queryFn: () => api.get(`/api/v1/earnings/pending?page=${page}&limit=20`).then(r => r.data),
     refetchInterval: 30000,
+    refetchOnMount: 'always',
   });
 
   const queue = data?.data?.queue || [];
@@ -72,7 +74,7 @@ export default function VerifierQueuePage() {
                 {queue.map((item) => (
                   <tr key={item.verification_id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 font-medium">{item.worker_name}</td>
-                    <td className="px-4 py-3 text-slate-600">{item.work_date}</td>
+                    <td className="px-4 py-3 text-slate-600">{formatDate(item.work_date)}</td>
                     <td className="px-4 py-3 text-slate-600">{item.platform_name}</td>
                     <td className="px-4 py-3 text-right font-semibold text-green-700">PKR {Number(item.net_received).toLocaleString()}</td>
                     <td className="px-4 py-3 text-right">{Number(item.commission_rate_pct).toFixed(1)}%</td>

@@ -18,6 +18,17 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const app = express();
 const PORT = Number(process.env.PORT || 3003);
 
+const defaultTags = [
+  { name: 'urgent', color: '#dc2626' },
+  { name: 'commission-issue', color: '#d97706' },
+  { name: 'deactivation', color: '#7c3aed' },
+  { name: 'payment-delay', color: '#2563eb' },
+  { name: 'verified', color: '#16a34a' },
+  { name: 'needs-review', color: '#64748b' },
+  { name: 'escalated', color: '#b45309' },
+  { name: 'resolved', color: '#059669' },
+];
+
 app.use(helmet());
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
@@ -52,6 +63,26 @@ function fail(error, message) {
 }
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+}
+
+async function ensureBootstrapData() {
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS grievance_upvotes (
+       grievance_id UUID NOT NULL REFERENCES grievances(id) ON DELETE CASCADE,
+       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+       created_at TIMESTAMP DEFAULT NOW(),
+       PRIMARY KEY (grievance_id, user_id)
+     )`
+  );
+
+  for (const tag of defaultTags) {
+    await pool.query(
+      `INSERT INTO grievance_tags (name, color_hex)
+       VALUES ($1, $2)
+       ON CONFLICT (name) DO NOTHING`,
+      [tag.name, tag.color]
+    );
+  }
 }
 
 /** Strip worker_id from grievance row if anonymous. */
@@ -92,29 +123,70 @@ app.get('/api/v1/grievances', authenticateToken,
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, parseInt(req.query.limit) || 20);
     const offset = (page - 1) * limit;
-    const statusFilter = req.query.status ? `AND g.status = '${req.query.status}'` : '';
-    const cityFilter = req.query.city ? `AND g.city = '${req.query.city}'` : '';
-    const catFilter = req.query.category ? `AND g.category = '${req.query.category}'` : '';
+
+    const where = [];
+    const params = [req.user.sub];
+
+    if (req.query.status) {
+      params.push(req.query.status);
+      where.push(`g.status = $${params.length}`);
+    }
+    if (req.query.city) {
+      params.push(req.query.city);
+      where.push(`g.city = $${params.length}`);
+    }
+    if (req.query.category) {
+      params.push(req.query.category);
+      where.push(`g.category = $${params.length}`);
+    }
+
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    params.push(limit);
+    const limitPlaceholder = `$${params.length}`;
+    params.push(offset);
+    const offsetPlaceholder = `$${params.length}`;
 
     const { rows } = await pool.query(
       `SELECT g.id, g.is_anonymous,
               CASE WHEN g.is_anonymous THEN NULL ELSE g.worker_id END AS worker_id,
+              CASE WHEN g.is_anonymous THEN 'Anonymous' ELSE u.name END AS worker_name,
+              CASE WHEN g.is_anonymous THEN NULL ELSE u.email END AS worker_email,
               g.platform_id, g.category, g.description, g.status,
               g.city, g.zone, g.upvote_count, g.advocate_note,
               g.escalated_at, g.resolved_at, g.created_at, g.updated_at,
+              (guv.user_id IS NOT NULL) AS has_upvoted,
               p.name AS platform_name,
               ARRAY_AGG(DISTINCT gt.name) FILTER (WHERE gt.name IS NOT NULL) AS tags
        FROM grievances g
+       LEFT JOIN users u ON u.id = g.worker_id
        LEFT JOIN platforms p ON p.id = g.platform_id
+       LEFT JOIN grievance_upvotes guv ON guv.grievance_id = g.id AND guv.user_id = $1
        LEFT JOIN grievance_tag_map gtm ON gtm.grievance_id = g.id
        LEFT JOIN grievance_tags gt ON gt.id = gtm.tag_id
-       WHERE 1=1 ${statusFilter} ${cityFilter} ${catFilter}
-       GROUP BY g.id, p.name
+       ${whereSql}
+       GROUP BY g.id, u.name, u.email, p.name, guv.user_id
        ORDER BY g.created_at DESC
-       LIMIT $1 OFFSET $2`,
-      [limit, offset]
+       LIMIT ${limitPlaceholder} OFFSET ${offsetPlaceholder}`,
+      params
     );
-    const { rows: [{ count }] } = await pool.query('SELECT COUNT(*) FROM grievances');
+
+    const countWhere = [];
+    const countParams = [];
+    if (req.query.status) {
+      countParams.push(req.query.status);
+      countWhere.push(`status = $${countParams.length}`);
+    }
+    if (req.query.city) {
+      countParams.push(req.query.city);
+      countWhere.push(`city = $${countParams.length}`);
+    }
+    if (req.query.category) {
+      countParams.push(req.query.category);
+      countWhere.push(`category = $${countParams.length}`);
+    }
+    const countWhereSql = countWhere.length ? `WHERE ${countWhere.join(' AND ')}` : '';
+    const { rows: [{ count }] } = await pool.query(`SELECT COUNT(*) FROM grievances ${countWhereSql}`, countParams);
+
     return res.json({
       ...success({ grievances: rows }),
       pagination: { page, limit, total: parseInt(count), totalPages: Math.ceil(parseInt(count) / limit) },
@@ -125,6 +197,7 @@ app.get('/api/v1/grievances', authenticateToken,
 // GET /api/v1/grievances/tags
 app.get('/api/v1/grievances/tags', authenticateToken,
   asyncHandler(async (req, res) => {
+    await ensureBootstrapData();
     const { rows } = await pool.query('SELECT * FROM grievance_tags ORDER BY name');
     return res.json(success({ tags: rows }));
   })
@@ -149,13 +222,20 @@ app.get('/api/v1/grievances/:id', authenticateToken,
   asyncHandler(async (req, res) => {
     const { rows } = await pool.query(
       `SELECT g.*, p.name AS platform_name,
+              CASE WHEN g.is_anonymous THEN 'Anonymous' ELSE u.name END AS worker_name,
+              CASE WHEN g.is_anonymous THEN NULL ELSE u.email END AS worker_email,
+              EXISTS(
+                SELECT 1 FROM grievance_upvotes gu
+                WHERE gu.grievance_id = g.id AND gu.user_id = $2
+              ) AS has_upvoted,
               ARRAY_AGG(DISTINCT gt.name) FILTER (WHERE gt.name IS NOT NULL) AS tags
        FROM grievances g
+       LEFT JOIN users u ON u.id = g.worker_id
        LEFT JOIN platforms p ON p.id = g.platform_id
        LEFT JOIN grievance_tag_map gtm ON gtm.grievance_id = g.id
        LEFT JOIN grievance_tags gt ON gt.id = gtm.tag_id
-       WHERE g.id = $1 GROUP BY g.id, p.name`,
-      [req.params.id]
+       WHERE g.id = $1 GROUP BY g.id, p.name, u.name, u.email`,
+      [req.params.id, req.user.sub]
     );
     if (!rows.length) return res.status(404).json(fail('NOT_FOUND', 'Grievance not found'));
     return res.json(success({ grievance: sanitize(rows[0]) }));
@@ -181,12 +261,41 @@ app.put('/api/v1/grievances/:id/tag', authenticateToken, requireRole(['advocate'
 // PUT /api/v1/grievances/:id/upvote
 app.put('/api/v1/grievances/:id/upvote', authenticateToken,
   asyncHandler(async (req, res) => {
-    const { rows } = await pool.query(
-      `UPDATE grievances SET upvote_count = upvote_count + 1, updated_at=NOW() WHERE id=$1 RETURNING upvote_count`,
-      [req.params.id]
-    );
-    if (!rows.length) return res.status(404).json(fail('NOT_FOUND', 'Grievance not found'));
-    return res.json(success({ upvote_count: rows[0].upvote_count }, 'Upvoted'));
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const grievanceExists = await client.query('SELECT id FROM grievances WHERE id = $1', [req.params.id]);
+      if (!grievanceExists.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(404).json(fail('NOT_FOUND', 'Grievance not found'));
+      }
+
+      const upvoteInsert = await client.query(
+        `INSERT INTO grievance_upvotes (grievance_id, user_id)
+         VALUES ($1, $2)
+         ON CONFLICT (grievance_id, user_id) DO NOTHING
+         RETURNING grievance_id`,
+        [req.params.id, req.user.sub]
+      );
+
+      if (!upvoteInsert.rows.length) {
+        const { rows } = await client.query('SELECT upvote_count FROM grievances WHERE id = $1', [req.params.id]);
+        await client.query('COMMIT');
+        return res.json(success({ upvote_count: rows[0].upvote_count, already_upvoted: true }, 'Already upvoted'));
+      }
+
+      const { rows } = await client.query(
+        `UPDATE grievances SET upvote_count = upvote_count + 1, updated_at = NOW() WHERE id = $1 RETURNING upvote_count`,
+        [req.params.id]
+      );
+      await client.query('COMMIT');
+      return res.json(success({ upvote_count: rows[0].upvote_count, already_upvoted: false }, 'Upvoted'));
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   })
 );
 
@@ -250,4 +359,11 @@ app.use((err, _req, res, _next) => {
   res.status(500).json(fail('SERVER_ERROR', 'Internal server error'));
 });
 
-app.listen(PORT, () => logger.info(`grievance-service on ${PORT}`));
+ensureBootstrapData()
+  .then(() => {
+    app.listen(PORT, () => logger.info(`grievance-service on ${PORT}`));
+  })
+  .catch((err) => {
+    logger.error('Failed to bootstrap grievance service', { err: err.message });
+    process.exit(1);
+  });

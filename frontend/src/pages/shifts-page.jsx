@@ -1,25 +1,18 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import Layout from '../components/Layout';
 import api from '../api/client';
+import { formatDate } from '../lib/date-format';
 
 function Skeleton() {
   return (
     <div className="space-y-3">
-      {[1,2,3,4,5].map(i => <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-200" />)}
+      {[1,2,3,4,5].map(i => <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-700 shimmer-loading" />)}
     </div>
   );
 }
-
-const statusColors = {
-  verified: 'bg-green-100 text-green-700',
-  pending: 'bg-yellow-100 text-yellow-700',
-  flagged: 'bg-red-100 text-red-700',
-  unverifiable: 'bg-slate-100 text-slate-600',
-};
 
 export default function ShiftsPage() {
   const [page, setPage] = useState(1);
@@ -46,31 +39,34 @@ export default function ShiftsPage() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900">My Shifts</h1>
+        <div className="flex items-center justify-between animate-in-up">
+          <div>
+            <h1 className="text-3xl font-bold text-cyan-50">My Shifts 📋</h1>
+            <p className="mt-1 text-sm text-cyan-200/70">Track all your work history and earnings</p>
+          </div>
           <div className="flex gap-2">
-            <Link to="/worker/shifts/import" className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-              Import CSV
+            <Link to="/worker/shifts/import" className="rounded-lg border border-cyan-300/40 bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/25 transition-all" title="Bulk import shifts from CSV">
+              📥 Import CSV
             </Link>
-            <Link to="/worker/shifts/add" className="rounded-lg bg-blue-800 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            <Link to="/worker/shifts/add" className="rounded-lg bg-gradient-to-r from-lime-600 to-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:from-lime-500 hover:to-cyan-500 transition-all shadow-[0_8px_20px_rgba(132,204,22,0.3)]" title="Add a new shift manually">
               + Add Shift
             </Link>
           </div>
         </div>
 
         {shifts.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center">
-            <div className="mx-auto mb-4 text-5xl">📋</div>
-            <h2 className="text-lg font-semibold text-slate-700">No shifts yet</h2>
-            <p className="mt-1 text-sm text-slate-500">Log your first shift to start tracking earnings</p>
-            <Link to="/worker/shifts/add" className="mt-4 inline-block rounded-xl bg-blue-800 px-6 py-2.5 text-sm font-semibold text-white">
+          <div className="rounded-2xl border border-dashed border-cyan-300/30 bg-cyan-950/20 py-16 text-center animate-in">
+            <div className="mx-auto mb-4 text-5xl animate-bounce">📋</div>
+            <h2 className="text-lg font-semibold text-cyan-100">No shifts logged yet</h2>
+            <p className="mt-1 text-sm text-cyan-200/60">Start tracking your earnings and work history</p>
+            <Link to="/worker/shifts/add" className="mt-4 inline-block rounded-xl bg-gradient-to-r from-lime-600 to-cyan-600 px-6 py-2.5 text-sm font-semibold text-white hover:from-lime-500 hover:to-cyan-500 transition-all">
               Log your first shift
             </Link>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-x-auto rounded-2xl border border-cyan-300/25 bg-gradient-to-br from-slate-900/50 to-slate-800/30 shadow-[0_8px_24px_rgba(34,211,238,0.15)] backdrop-blur-lg">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <thead className="border-b border-cyan-300/20 bg-cyan-950/40 text-xs uppercase tracking-wide text-cyan-200">
                 <tr>
                   <th className="px-4 py-3 text-left">Date</th>
                   <th className="px-4 py-3 text-left">Platform</th>
@@ -79,34 +75,52 @@ export default function ShiftsPage() {
                   <th className="px-4 py-3 text-right">Net</th>
                   <th className="px-4 py-3 text-right">Commission %</th>
                   <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-left">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-cyan-300/10">
                 {shifts.map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium">{s.work_date}</td>
-                    <td className="px-4 py-3 text-slate-600">{s.platform_name}</td>
-                    <td className="px-4 py-3 text-right">PKR {Number(s.gross_earned).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right text-red-600">−PKR {Number(s.platform_deductions).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-green-700">PKR {Number(s.net_received).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right">{Number(s.commission_rate_pct).toFixed(1)}%</td>
+                  <tr key={s.id} className="transition-all hover:bg-cyan-950/60 hover:border-cyan-300/30 group">
+                    <td className="px-4 py-3 font-medium text-cyan-100 group-hover:text-cyan-50">{formatDate(s.work_date)}</td>
+                    <td className="px-4 py-3 text-cyan-200/80 group-hover:text-cyan-100">{s.platform_name}</td>
+                    <td className="px-4 py-3 text-right text-cyan-200 group-hover:text-cyan-100">PKR {Number(s.gross_earned).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right text-red-400 group-hover:text-red-300">−PKR {Number(s.platform_deductions).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-lime-400 group-hover:text-lime-300">PKR {Number(s.net_received).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right text-fuchsia-300 group-hover:text-fuchsia-200">{Number(s.commission_rate_pct).toFixed(1)}%</td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusColors[s.verification_status] || statusColors.pending}`}>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold transition-all ${
+                        s.verification_status === 'verified' ? 'bg-lime-500/20 text-lime-200' :
+                        s.verification_status === 'pending' ? 'bg-yellow-500/20 text-yellow-200' :
+                        s.verification_status === 'flagged' ? 'bg-red-500/20 text-red-200' :
+                        'bg-cyan-500/20 text-cyan-200'
+                      }`}>
                         {s.verification_status || 'pending'}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {s.verification_status === 'verified' ? (
+                        <span className="rounded-md border border-lime-400/30 bg-lime-500/10 px-2 py-1 text-xs text-lime-200">Locked</span>
+                      ) : (
+                        <Link
+                          to={`/worker/shifts/${s.id}/edit`}
+                          className="rounded-md border border-cyan-300/40 bg-cyan-500/15 px-2 py-1 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/25"
+                        >
+                          Edit
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             {pagination && pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
-                <p className="text-sm text-slate-500">Page {pagination.page} of {pagination.totalPages}</p>
+              <div className="flex items-center justify-between border-t border-cyan-300/15 px-4 py-3">
+                <p className="text-sm text-cyan-200/70">Page {pagination.page} of {pagination.totalPages}</p>
                 <div className="flex gap-2">
                   <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                    className="rounded-md border border-slate-300 px-3 py-1.5 text-xs disabled:opacity-40">Previous</button>
+                    className="rounded-md border border-cyan-300/30 bg-cyan-950/30 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-950/60 disabled:opacity-40 transition-all" title="Previous page">Previous</button>
                   <button onClick={() => setPage(p => p + 1)} disabled={page >= pagination.totalPages}
-                    className="rounded-md border border-slate-300 px-3 py-1.5 text-xs disabled:opacity-40">Next</button>
+                    className="rounded-md border border-cyan-300/30 bg-cyan-950/30 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-950/60 disabled:opacity-40 transition-all" title="Next page">Next</button>
                 </div>
               </div>
             )}

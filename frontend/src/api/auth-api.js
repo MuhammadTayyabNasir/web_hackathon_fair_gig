@@ -2,7 +2,7 @@ const API_BASE = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:3001';
 
 /**
  * Exchange Firebase ID token for FairGig JWT/session.
- * @param {{ idToken: string, role: 'worker' | 'verifier' | 'advocate' }} payload
+ * @param {{ idToken: string, role?: 'worker' | 'verifier' | 'advocate' }} payload
  */
 export async function loginWithFirebase(payload) {
   const response = await fetch(`${API_BASE}/api/v1/auth/firebase-login`, {

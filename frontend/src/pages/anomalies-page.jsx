@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import { useAuthStore } from '../store/auth-store';
+import { formatDateTime } from '../lib/date-format';
 
 const sevColors = {
   high: 'border-red-400 bg-red-50',
@@ -71,7 +72,7 @@ export default function AnomaliesPage() {
                     )}
                   </div>
                   <div className="shrink-0 text-right text-xs text-slate-500">
-                    {new Date(item.detected_at).toLocaleDateString()}
+                    {formatDateTime(item.detected_at)}
                   </div>
                 </div>
               </div>

@@ -145,6 +145,13 @@ CREATE TABLE grievance_tag_map (
   PRIMARY KEY (grievance_id, tag_id)
 );
 
+CREATE TABLE grievance_upvotes (
+  grievance_id UUID NOT NULL REFERENCES grievances(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY (grievance_id, user_id)
+);
+
 CREATE TABLE complaint_clusters (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(100) NOT NULL,
@@ -201,6 +208,7 @@ CREATE INDEX idx_verifications_shift_id ON verifications(shift_id);
 CREATE INDEX idx_grievances_status ON grievances(status);
 CREATE INDEX idx_grievances_platform_id ON grievances(platform_id);
 CREATE INDEX idx_grievances_city ON grievances(city);
+CREATE INDEX idx_grievance_upvotes_user ON grievance_upvotes(user_id);
 CREATE INDEX idx_anomaly_logs_worker_id ON anomaly_logs(worker_id);
 CREATE INDEX idx_anomaly_logs_detected_at ON anomaly_logs(detected_at);
 CREATE INDEX idx_commission_snapshots_platform ON commission_snapshots(platform_id, snapshot_date);

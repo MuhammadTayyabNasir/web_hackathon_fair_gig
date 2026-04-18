@@ -60,30 +60,96 @@ const proxyOpts = (target) => ({
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'api-gateway', timestamp: new Date().toISOString() }));
 
 // Auth — public
-app.use('/api/v1/auth', createProxyMiddleware(proxyOpts(AUTH_URL)));
+app.use(
+  '/api/v1/auth',
+  createProxyMiddleware({
+    ...proxyOpts(AUTH_URL),
+    pathRewrite: (path) => `/api/v1/auth${path}`,
+  })
+);
 
 // Public certificate view
-app.use('/cert', createProxyMiddleware(proxyOpts(CERT_URL)));
+app.use(
+  '/cert',
+  createProxyMiddleware({
+    ...proxyOpts(CERT_URL),
+    pathRewrite: (path) => `/cert${path}`,
+  })
+);
 
 // Anomaly — public detect + health; worker history needs auth
-app.use('/api/v1/anomaly/health', createProxyMiddleware(proxyOpts(ANOMALY_URL)));
-app.use('/api/v1/anomaly/detect', createProxyMiddleware(proxyOpts(ANOMALY_URL)));
-app.use('/api/v1/anomaly', requireAuth, createProxyMiddleware(proxyOpts(ANOMALY_URL)));
+app.use(
+  '/api/v1/anomaly/health',
+  createProxyMiddleware({
+    ...proxyOpts(ANOMALY_URL),
+    pathRewrite: (path) => `/api/v1/anomaly/health${path}`,
+  })
+);
+app.use(
+  '/api/v1/anomaly/detect',
+  createProxyMiddleware({
+    ...proxyOpts(ANOMALY_URL),
+    pathRewrite: (path) => `/api/v1/anomaly/detect${path}`,
+  })
+);
+app.use(
+  '/api/v1/anomaly',
+  requireAuth,
+  createProxyMiddleware({
+    ...proxyOpts(ANOMALY_URL),
+    pathRewrite: (path) => `/api/v1/anomaly${path}`,
+  })
+);
 
 // Certificate — generate needs auth; public token view already handled above
-app.use('/api/v1/certificate', requireAuth, createProxyMiddleware(proxyOpts(CERT_URL)));
+app.use(
+  '/api/v1/certificate',
+  requireAuth,
+  createProxyMiddleware({
+    ...proxyOpts(CERT_URL),
+    pathRewrite: (path) => `/api/v1/certificate${path}`,
+  })
+);
 
 // Earnings
-app.use('/api/v1/earnings', requireAuth, createProxyMiddleware(proxyOpts(EARNINGS_URL)));
+app.use(
+  '/api/v1/earnings',
+  requireAuth,
+  createProxyMiddleware({
+    ...proxyOpts(EARNINGS_URL),
+    pathRewrite: (path) => `/api/v1/earnings${path}`,
+  })
+);
 
 // Grievances
-app.use('/api/v1/grievances', requireAuth, createProxyMiddleware(proxyOpts(GRIEVANCE_URL)));
+app.use(
+  '/api/v1/grievances',
+  requireAuth,
+  createProxyMiddleware({
+    ...proxyOpts(GRIEVANCE_URL),
+    pathRewrite: (path) => `/api/v1/grievances${path}`,
+  })
+);
 
 // Analytics
-app.use('/api/v1/analytics', requireAuth, createProxyMiddleware(proxyOpts(ANALYTICS_URL)));
+app.use(
+  '/api/v1/analytics',
+  requireAuth,
+  createProxyMiddleware({
+    ...proxyOpts(ANALYTICS_URL),
+    pathRewrite: (path) => `/api/v1/analytics${path}`,
+  })
+);
 
 // Notifications
-app.use('/api/v1/notifications', requireAuth, createProxyMiddleware(proxyOpts(NOTIFY_URL)));
+app.use(
+  '/api/v1/notifications',
+  requireAuth,
+  createProxyMiddleware({
+    ...proxyOpts(NOTIFY_URL),
+    pathRewrite: (path) => `/api/v1/notifications${path}`,
+  })
+);
 
 app.use((_req, res) => {
   res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Route not found', timestamp: new Date().toISOString() });

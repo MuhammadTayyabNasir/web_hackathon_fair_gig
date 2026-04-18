@@ -133,9 +133,19 @@ app.get('/api/v1/earnings/shifts/:id', authenticateToken,
 // PUT /api/v1/earnings/shifts/:id
 app.put('/api/v1/earnings/shifts/:id', authenticateToken, requireRole(['worker']),
   asyncHandler(async (req, res) => {
-    const { rows } = await pool.query('SELECT worker_id FROM shifts WHERE id = $1', [req.params.id]);
+    const { rows } = await pool.query(
+      `SELECT s.worker_id, v.status AS verification_status
+       FROM shifts s
+       LEFT JOIN verifications v ON v.shift_id = s.id
+       WHERE s.id = $1`,
+      [req.params.id]
+    );
     if (!rows.length) return res.status(404).json(fail('NOT_FOUND', 'Shift not found'));
     if (rows[0].worker_id !== req.user.sub) return res.status(403).json(fail('FORBIDDEN', 'Not your shift'));
+    if (rows[0].verification_status === 'verified') {
+      return res.status(409).json(fail('LOCKED', 'Verified shifts cannot be edited'));
+    }
+
     const { platform_id, work_date, shift_start, shift_end, hours_worked, gross_earned, platform_deductions, net_received } = req.body;
     const { rows: updated } = await pool.query(
       `UPDATE shifts SET platform_id=COALESCE($1,platform_id), work_date=COALESCE($2,work_date),
@@ -146,6 +156,15 @@ app.put('/api/v1/earnings/shifts/:id', authenticateToken, requireRole(['worker']
        WHERE id=$9 RETURNING *`,
       [platform_id, work_date, shift_start, shift_end, hours_worked, gross_earned, platform_deductions, net_received, req.params.id]
     );
+
+    await pool.query(
+      `INSERT INTO verifications (shift_id, status)
+       VALUES ($1, 'pending')
+       ON CONFLICT (shift_id)
+       DO UPDATE SET status = 'pending', verifier_id = NULL, verifier_note = NULL, flagged_reason = NULL, verified_at = NULL`,
+      [req.params.id]
+    );
+
     return res.json(success({ shift: updated[0] }, 'Shift updated'));
   })
 );
@@ -229,7 +248,7 @@ app.post('/api/v1/earnings/shifts/:id/screenshot', authenticateToken, requireRol
     if (!rows.length) return res.status(404).json(fail('NOT_FOUND', 'Shift not found'));
     if (rows[0].worker_id !== req.user.sub) return res.status(403).json(fail('FORBIDDEN', 'Not your shift'));
 
-    // Without Firebase SDK wired, store as placeholder URL
+    // Keep this route backward compatible for multipart uploads.
     const storageUrl = `https://storage.example.com/shifts/${req.params.id}/${uuidv4()}.${req.file.mimetype.split('/')[1]}`;
 
     await pool.query(
@@ -242,6 +261,44 @@ app.post('/api/v1/earnings/shifts/:id/screenshot', authenticateToken, requireRol
       [req.params.id]
     );
     return res.json(success({ storage_url: storageUrl }, 'Screenshot uploaded'));
+  })
+);
+
+// POST /api/v1/earnings/shifts/:id/screenshot-url
+app.post('/api/v1/earnings/shifts/:id/screenshot-url', authenticateToken, requireRole(['worker']),
+  body('storage_url').isURL().withMessage('storage_url must be a valid URL'),
+  body('mime_type').optional().isString(),
+  body('file_size_bytes').optional().isInt({ min: 1, max: 5 * 1024 * 1024 }).withMessage('file_size_bytes must be between 1 and 5MB'),
+  asyncHandler(async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json(fail('VALIDATION_ERROR', errors.array()[0].msg));
+
+    const { rows } = await pool.query('SELECT worker_id FROM shifts WHERE id = $1', [req.params.id]);
+    if (!rows.length) return res.status(404).json(fail('NOT_FOUND', 'Shift not found'));
+    if (rows[0].worker_id !== req.user.sub) return res.status(403).json(fail('FORBIDDEN', 'Not your shift'));
+
+    const { storage_url, mime_type, file_size_bytes, original_filename } = req.body;
+
+    await pool.query(
+      `INSERT INTO screenshot_uploads (shift_id, uploader_id, storage_url, storage_provider, file_size_bytes, mime_type, original_filename)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        req.params.id,
+        req.user.sub,
+        storage_url,
+        'firebase-client',
+        file_size_bytes || null,
+        mime_type || null,
+        original_filename || 'screenshot',
+      ]
+    );
+
+    await pool.query(
+      `INSERT INTO verifications (shift_id, status) VALUES ($1,'pending') ON CONFLICT (shift_id) DO UPDATE SET status='pending'`,
+      [req.params.id]
+    );
+
+    return res.json(success({ storage_url }, 'Screenshot uploaded'));
   })
 );
 
@@ -343,6 +400,40 @@ app.get('/api/v1/earnings/platforms', authenticateToken,
   asyncHandler(async (req, res) => {
     const { rows } = await pool.query('SELECT id, name, slug FROM platforms WHERE is_active = true ORDER BY name');
     return res.json(success({ platforms: rows }));
+  })
+);
+
+// POST /api/v1/earnings/platforms - Create custom platform (worker)
+app.post('/api/v1/earnings/platforms', authenticateToken, requireRole(['worker']),
+  body('name').trim().isLength({ min: 2, max: 100 }).withMessage('Platform name must be 2-100 characters'),
+  asyncHandler(async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json(fail('VALIDATION_ERROR', errors.array()[0].msg));
+    
+    const { name } = req.body;
+    const normalizedName = name.toLowerCase().trim();
+    
+    // Check if platform with normalized name already exists
+    const { rows: existing } = await pool.query(
+      'SELECT id, name FROM platforms WHERE LOWER(TRIM(name)) = $1',
+      [normalizedName]
+    );
+    
+    if (existing.length) {
+      return res.status(409).json(success({ 
+        platform: existing[0], 
+        message: `Platform "${existing[0].name}" already exists` 
+      }));
+    }
+    
+    // Create new platform with normalized name
+    const slug = normalizedName.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const { rows: [platform] } = await pool.query(
+      'INSERT INTO platforms (name, slug, is_active) VALUES ($1, $2, true) RETURNING id, name, slug',
+      [name, slug]
+    );
+    
+    return res.status(201).json(success({ platform }, 'Platform created'));
   })
 );
 
